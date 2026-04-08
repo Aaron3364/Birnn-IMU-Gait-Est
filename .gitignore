@@ -1,0 +1,14 @@
+# 忽略数据集文件
+*.pkl
+DIP_IMU/
+data/
+
+# 忽略训练生成的模型权重
+checkpoints/
+*.pth
+
+# 忽略 Python 缓存和 PyCharm 配置
+__pycache__/
+*.pyc
+.idea/
+.DS_Store
