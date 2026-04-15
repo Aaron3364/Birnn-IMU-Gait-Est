@@ -6,7 +6,7 @@ from models import BiRNN_Gait_Estimator
 from dataset import DIPIMUDataset, get_kfold_dataloaders
 
 
-def visualize_gait_prediction(model, val_loader, config, num_frames=300, joint_idx=4):
+def visualize_gait_prediction(model, val_loader, config, num_frames=1500, joint_idx=6):
     """
     可视化模型预测的关节欧拉角 vs 真实欧拉角 (时间序列)
 
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     model = BiRNN_Gait_Estimator(config)
 
     # ⚠️ 请把下面这个路径替换成你刚才 checkpoints 文件夹里跑出来的 best_model.pth 的真实路径！
-    best_model_path = "E:\MyProjects\IMU_Gait_Model\\train\checkpoints\\run_20260407_153004\\best_model.pth"
+    best_model_path = "E:\MyProjects\IMU_Gait_Model\\train\checkpoints\\run_20260408\\fold_4\\best_model.pth"
 
     try:
         model.load_state_dict(torch.load(best_model_path))
@@ -103,4 +103,4 @@ if __name__ == "__main__":
 
     # 4. 调用画图函数
     # SMPL 骨骼节点参考：4 是左膝盖，5 是右膝盖，7 是左脚踝，8 是右脚踝
-    visualize_gait_prediction(model, val_loader, config, num_frames=300, joint_idx=4)
+    visualize_gait_prediction(model, val_loader, config, num_frames=1500, joint_idx=5)

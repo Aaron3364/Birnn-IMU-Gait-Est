@@ -11,9 +11,10 @@ import random
 from sklearn.model_selection import GroupKFold
 # 原有的其他 import ...
 class DIPIMUDataset(Dataset):
-    def __init__(self, root_dir, seq_length=60, transform=True):
+    def __init__(self, root_dir, seq_length=60, transform=True,sensor_indices=None):
         self.seq_length = seq_length
-
+        # 如果没有传入，默认使用 0-16 全部传感器
+        self.sensor_indices = sensor_indices if sensor_indices is not None else list(range(17))
         # 1. 扫描所有 .pkl 文件
         search_pattern = os.path.join(root_dir, '**', '*.pkl')
         pkl_files = glob.glob(search_pattern, recursive=True)
@@ -45,6 +46,10 @@ class DIPIMUDataset(Dataset):
             # ================= 提取特征 (X) =================
             imu_acc = data['imu_acc'].astype(np.float32)
             imu_ori = data['imu_ori'].astype(np.float32)
+            # 【核心逻辑】：只保留我们在 config 中指定的传感器索引
+            # 注意切片的维度，在第 1 维 (即 17 那个维度) 提取所需的传感器
+            imu_acc = imu_acc[:, self.sensor_indices, :]
+            imu_ori = imu_ori[:, self.sensor_indices, :, :]
             num_frames = imu_acc.shape[0]
 
             # 展平姿态矩阵 (N, 17, 3, 3) -> (N, 17, 9)

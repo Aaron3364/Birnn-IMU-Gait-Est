@@ -12,7 +12,9 @@ def main():
 
     # 1. 实例化全局数据集 (数据只读一次，节省时间)
     print(f"正在从 {config.data_path} 加载全局数据...")
-    dataset = DIPIMUDataset(config.data_path, seq_length=config.sequence_length)
+    print(f"📡 当前启用的 IMU 传感器索引: {config.sensor_indices}")
+    print(f"🔢 动态计算的输入特征维度为: {config.input_size} 维")
+    dataset = DIPIMUDataset(config.data_path, seq_length=config.sequence_length,sensor_indices=config.sensor_indices)
 
     # 2. 获取 5 折交叉验证的 Dataloader 列表
     k_splits = 5

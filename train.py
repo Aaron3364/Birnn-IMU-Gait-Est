@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 import copy
 from datetime import datetime
-
+from torch.utils.tensorboard import SummaryWriter
 
 def train_model(model, train_loader, val_loader, config,fold=1):
     model = model.to(config.device)
@@ -23,7 +23,9 @@ def train_model(model, train_loader, val_loader, config,fold=1):
     save_dir = os.path.join('checkpoints', f'run_{current_time}', f'fold_{fold}')
 
     os.makedirs(save_dir, exist_ok=True)
-    print(f" 本折模型将保存在: {save_dir}")
+
+    writer = SummaryWriter(log_dir=save_dir)
+    print(f"📁 本折模型及 TensorBoard 日志将保存在: {save_dir}")
     # ======================================================================
 
     print(f"开始训练，使用设备: {config.device}")
@@ -67,6 +69,11 @@ def train_model(model, train_loader, val_loader, config,fold=1):
         print(
             f"Epoch {epoch + 1}/{config.epochs} | Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f}")
 
+        writer.add_scalar('Loss/Train', epoch_train_loss, epoch)
+        writer.add_scalar('Loss/Val', epoch_val_loss, epoch)
+        # 顺便把学习率也记录下来，看看 scheduler 什么时候触发了衰减
+        writer.add_scalar('Learning_Rate', optimizer.param_groups[0]['lr'], epoch)
+
         # 更新学习率调度器
         scheduler.step(epoch_val_loss)
 
@@ -84,6 +91,7 @@ def train_model(model, train_loader, val_loader, config,fold=1):
             best_model_path = os.path.join(save_dir, 'best_model.pth')
             torch.save(best_model_weights, best_model_path)
             print(f" 发现更优模型！已覆盖保存至: {best_model_path}")
+    writer.close()
 
     print("训练结束！最优模型已加载。")
     model.load_state_dict(best_model_weights)
