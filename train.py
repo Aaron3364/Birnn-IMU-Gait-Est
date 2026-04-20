@@ -10,10 +10,10 @@ def train_model(model, train_loader, val_loader, config,fold=1):
     model = model.to(config.device)
 
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=config.learning_rate,weight_decay=1e-4)
+    optimizer = optim.Adam(model.parameters(), lr=config.learning_rate,weight_decay=1e-3)  # 从1e-4增加到1e-3
 
     # 学习率调度器
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3, )  # patience从5减少到3
 
     best_val_loss = float('inf')
     best_model_weights = copy.deepcopy(model.state_dict())
@@ -55,6 +55,8 @@ def train_model(model, train_loader, val_loader, config,fold=1):
         # ================= 验证阶段 =================
         model.eval()
         val_loss = 0.0
+        val_predictions = []
+        val_targets_list = []
 
         with torch.no_grad():
             for inputs, targets in val_loader:
@@ -63,14 +65,23 @@ def train_model(model, train_loader, val_loader, config,fold=1):
                 outputs = model(inputs)
                 loss = criterion(outputs, targets)
                 val_loss += loss.item() * inputs.size(0)
+                
+                val_predictions.append(outputs.cpu())
+                val_targets_list.append(targets.cpu())
 
         epoch_val_loss = val_loss / len(val_loader.dataset)
-
+        
+        # 计算额外指标，如MAE
+        val_predictions = torch.cat(val_predictions, dim=0)
+        val_targets = torch.cat(val_targets_list, dim=0)
+        mae = torch.mean(torch.abs(val_predictions - val_targets)).item()
+        
         print(
-            f"Epoch {epoch + 1}/{config.epochs} | Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f}")
+            f"Epoch {epoch + 1}/{config.epochs} | Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f} | Val MAE: {mae:.4f}")
 
         writer.add_scalar('Loss/Train', epoch_train_loss, epoch)
         writer.add_scalar('Loss/Val', epoch_val_loss, epoch)
+        writer.add_scalar('MAE/Val', mae, epoch)
         # 顺便把学习率也记录下来，看看 scheduler 什么时候触发了衰减
         writer.add_scalar('Learning_Rate', optimizer.param_groups[0]['lr'], epoch)
 

@@ -73,20 +73,25 @@ def visualize_gait_prediction(model, val_loader, config, num_frames=1500, joint_
     plt.tight_layout()  # 自动调整间距防止重叠
     # 稍微给总标题留点空间
     plt.subplots_adjust(top=0.92)
-    plt.show()
+    # 保存图表到文件而不是显示
+    plt.savefig('plots/visualization.png', dpi=300, bbox_inches='tight')
+    print("✅ 图表已保存到 plots/visualization.png")
+    # plt.show()  # 在命令行中可能无法显示，注释掉
 
 
 # ================= 独立运行的测试模块 =================
 if __name__ == "__main__":
     # 1. 初始化配置
     config = Config()
+    # 修改sensor_indices以匹配训练时的配置（假设用15个传感器训练）
+    config.sensor_indices = list(range(15))
+    config.input_size = len(config.sensor_indices) * 12
 
     # 2. 必须先实例化模型，并加载你训练好的权重 (.pth 文件)
     model = BiRNN_Gait_Estimator(config)
 
     # ⚠️ 请把下面这个路径替换成你刚才 checkpoints 文件夹里跑出来的 best_model.pth 的真实路径！
-    best_model_path = "E:\MyProjects\IMU_Gait_Model\\train\checkpoints\\run_20260408\\fold_4\\best_model.pth"
-
+    best_model_path = r"E:\MyProjects\IMU_Gait_Model\train\checkpoints\run_20260419\fold_1\best_model.pth"
     try:
         model.load_state_dict(torch.load(best_model_path))
         print("✅ 成功加载最优模型权重！")
@@ -95,7 +100,7 @@ if __name__ == "__main__":
         exit()
 
     # 3. 加载验证集数据 (为了图省事，这里快速跑一次 K折 划分，提取第一折的验证集)
-    dataset = DIPIMUDataset(config.data_path, seq_length=config.sequence_length)
+    dataset = DIPIMUDataset(config.data_path, seq_length=config.sequence_length, sensor_indices=config.sensor_indices)
     folds_loaders = get_kfold_dataloaders(dataset, config, k_splits=5)
 
     # 我们随便取第一折 (fold 1) 的 val_loader 来画图

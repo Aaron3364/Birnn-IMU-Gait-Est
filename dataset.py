@@ -52,9 +52,31 @@ class DIPIMUDataset(Dataset):
             imu_ori = imu_ori[:, self.sensor_indices, :, :]
             num_frames = imu_acc.shape[0]
 
-            # 展平姿态矩阵 (N, 17, 3, 3) -> (N, 17, 9)
+            # ================= 对齐到传感器1的坐标系 =================
+            if 1 in self.sensor_indices:
+                ref_idx = self.sensor_indices.index(1)  # 传感器1在sensor_indices中的索引
+                R1 = imu_ori[:, ref_idx, :, :]  # (N, 3, 3) 参考旋转矩阵
+                R1_inv = np.transpose(R1, (0, 2, 1))  # 逆变换 (N, 3, 3)
+
+                for i, sensor_id in enumerate(self.sensor_indices):
+                    if sensor_id != 1:
+                        R_i = imu_ori[:, i, :, :]  # (N, 3, 3)
+                        acc_i = imu_acc[:, i, :]  # (N, 3)
+
+                        # 对齐加速度: acc_aligned = R1_inv @ (R_i @ acc_i)
+                        acc_i_transformed = np.einsum('nij,nj->ni', R_i, acc_i)
+                        acc_i_aligned = np.einsum('nij,nj->ni', R1_inv, acc_i_transformed)
+                        imu_acc[:, i, :] = acc_i_aligned
+
+                        # 对齐姿态: ori_aligned = R1_inv @ R_i
+                        ori_i_aligned = np.einsum('nij,njk->nik', R1_inv, R_i)
+                        imu_ori[:, i, :, :] = ori_i_aligned
+            else:
+                print(f"⚠️ 传感器1不在选定传感器列表中，跳过对齐: {os.path.basename(file_path)}")
+
+            # 展平姿态矩阵 (N, num_sensors, 3, 3) -> (N, num_sensors, 9)
             imu_ori_flat = imu_ori.reshape(num_frames, -1, 9)
-            # 拼接加速度和姿态 (N, 17, 12)
+            # 拼接加速度和姿态 (N, num_sensors, 12)
             features = np.concatenate([imu_acc, imu_ori_flat], axis=2)
             X_seq = features.reshape(num_frames, -1)  # -> (N, 204)
 
@@ -113,6 +135,12 @@ class DIPIMUDataset(Dataset):
             print("✨ 正在应用标准化...")
             for i in range(len(self.all_X)):
                 self.all_X[i] = self.scaler.transform(self.all_X[i])
+
+            # 添加数据增强：对训练数据添加轻微噪声
+            print("🔧 正在应用数据增强...")
+            for i in range(len(self.all_X)):
+                noise = np.random.normal(0, 0.01, self.all_X[i].shape)  # 轻微高斯噪声
+                self.all_X[i] += noise
 
         print(f"✅ 数据管道就绪！共生成 {len(self.valid_indices)} 个干净的滑动窗口样本。")
 
